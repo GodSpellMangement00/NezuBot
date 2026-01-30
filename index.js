@@ -20,12 +20,11 @@ const client = new Client({
   ]
 });
 
-/* SLASH COMMANDS */
+/* SLASH COMMAND */
 const commands = [
   { name: "help", description: "Show help menu" }
 ];
 
-/* READY */
 client.once("ready", async () => {
   console.log("Bot online");
 
@@ -36,79 +35,72 @@ client.once("ready", async () => {
   );
 });
 
-/* BOT INFO EMBED */
-function botInfoEmbed() {
-  return new EmbedBuilder()
-    .setTitle("NezuBot")
-    .setDescription("Cute Demon Slayer bot 🩷")
-    .addFields(
-      { name: "Owner", value: "DeadSlot", inline: true },
-      { name: "Prefix", value: "-", inline: true },
-      { name: "Version", value: "1.0", inline: true }
-    );
-}
+/* EMBEDS */
+const infoEmbed = new EmbedBuilder()
+  .setTitle("NezuBot")
+  .setDescription("Cute Demon Slayer bot")
+  .addFields(
+    { name: "Owner", value: "DeadSlot", inline: true },
+    { name: "Prefix", value: "-", inline: true },
+    { name: "Version", value: "1.0", inline: true }
+  );
 
-/* COMMAND MENU EMBED */
-function commandMenuEmbed() {
-  return new EmbedBuilder()
-    .setTitle("Command Menu")
-    .setDescription("Use buttons to view commands")
-    .addFields(
-      { name: "Moderation", value: "ban, kick, mute, warn..." },
-      { name: "Games", value: "connect4, battleship..." },
-      { name: "Utility", value: "help, poll, suggest..." }
-    );
-}
+const mainHelp = new EmbedBuilder()
+  .setTitle("Help Menu")
+  .setDescription("Click buttons to view commands");
+
+const modEmbed = new EmbedBuilder()
+  .setTitle("Moderation Commands")
+  .setDescription("ban, kick, mute, warn, purge, lock");
+
+const gameEmbed = new EmbedBuilder()
+  .setTitle("Game Commands")
+  .setDescription("connect4, battleship, country-guess");
+
+const utilEmbed = new EmbedBuilder()
+  .setTitle("Utility Commands")
+  .setDescription("help, poll, suggest, autoresponder");
 
 /* BUTTONS */
-const buttons = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId("commands")
-    .setLabel("Commands")
-    .setStyle(ButtonStyle.Primary)
+const menuButtons = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId("mod").setLabel("Moderation").setStyle(ButtonStyle.Primary),
+  new ButtonBuilder().setCustomId("games").setLabel("Games").setStyle(ButtonStyle.Primary),
+  new ButtonBuilder().setCustomId("util").setLabel("Utility").setStyle(ButtonStyle.Primary)
 );
 
-/* BOT MENTION = INFO ONLY */
+/* MESSAGE HANDLER */
 client.on("messageCreate", async message => {
   if (message.author.bot) return;
 
   if (message.content === `<@${client.user.id}>`) {
-    return message.reply({
-      embeds: [botInfoEmbed()],
-      components: [buttons]
-    });
+    return message.reply({ embeds: [infoEmbed] });
   }
 
   if (!message.content.startsWith(PREFIX)) return;
 
   const cmd = message.content.slice(PREFIX.length).toLowerCase();
-
   if (cmd === "help") {
-    message.reply({
-      embeds: [commandMenuEmbed()],
-      components: [buttons]
-    });
+    message.reply({ embeds: [mainHelp], components: [menuButtons] });
   }
 });
 
-/* SLASH /help */
+/* INTERACTIONS */
 client.on("interactionCreate", async interaction => {
   if (interaction.isChatInputCommand()) {
     if (interaction.commandName === "help") {
-      interaction.reply({
-        embeds: [commandMenuEmbed()],
-        components: [buttons]
-      });
+      interaction.reply({ embeds: [mainHelp], components: [menuButtons] });
     }
   }
 
   if (interaction.isButton()) {
-    if (interaction.customId === "commands") {
-      interaction.reply({
-        embeds: [commandMenuEmbed()],
-        ephemeral: true
-      });
-    }
+    if (interaction.customId === "mod")
+      interaction.reply({ embeds: [modEmbed], ephemeral: true });
+
+    if (interaction.customId === "games")
+      interaction.reply({ embeds: [gameEmbed], ephemeral: true });
+
+    if (interaction.customId === "util")
+      interaction.reply({ embeds: [utilEmbed], ephemeral: true });
   }
 });
 
