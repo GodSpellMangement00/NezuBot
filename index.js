@@ -5,9 +5,13 @@ const {
   PermissionsBitField
 } = require("discord.js");
 
+const Filter = require("bad-words");
+const filter = new Filter();
+
 const PREFIX = "-";
 let lastDeleted = null;
 let topCheckEnabled = false;
+const spamMap = new Map();
 
 const client = new Client({
   intents: [
@@ -38,7 +42,62 @@ client.on("guildMemberAdd", member => {
   }
 });
 
-/* COMMAND HANDLER */
+/* AUTO MOD */
+client.on("messageCreate", async message => {
+  if (!message.guild) return;
+  if (message.author.bot) return;
+
+  if (message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+    return;
+
+  const content = message.content;
+
+  /* BAD WORDS */
+  if (filter.isProfane(content)) {
+    await message.delete();
+    return message.channel.send(`${message.author}, bad words not allowed`)
+      .then(m => setTimeout(() => m.delete(), 3000));
+  }
+
+  /* ANTI LINK */
+  if (
+    content.includes("http://") ||
+    content.includes("https://") ||
+    content.includes("discord.gg")
+  ) {
+    await message.delete();
+    return message.channel.send(`${message.author}, links not allowed`)
+      .then(m => setTimeout(() => m.delete(), 3000));
+  }
+
+  /* CAPS */
+  const caps = content.replace(/[^A-Z]/g, "").length;
+  if (caps > 5 && caps / content.length > 0.7) {
+    await message.delete();
+    return message.channel.send(`${message.author}, stop caps`)
+      .then(m => setTimeout(() => m.delete(), 3000));
+  }
+
+  /* SPAM */
+  const now = Date.now();
+  const data = spamMap.get(message.author.id) || { count: 0, time: now };
+
+  if (now - data.time < 5000) {
+    data.count++;
+    if (data.count >= 5) {
+      await message.delete();
+      return message.channel.send(`${message.author}, stop spamming`)
+        .then(m => setTimeout(() => m.delete(), 3000));
+    }
+  } else {
+    data.count = 1;
+    data.time = now;
+  }
+
+  spamMap.set(message.author.id, data);
+});
+
+/* COMMANDS */
 client.on("messageCreate", async message => {
   if (message.author.bot) return;
   if (!message.content.startsWith(PREFIX)) return;
@@ -58,17 +117,13 @@ client.on("messageCreate", async message => {
   }
 
   if (cmd === "unban") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
-      return message.reply("No permission");
     const id = args[0];
-    if (!id) return message.reply("Give user ID");
+    if (!id) return message.reply("Give ID");
     await message.guild.members.unban(id);
     message.reply("User unbanned");
   }
 
   if (cmd === "kick") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
-      return message.reply("No permission");
     const m = message.mentions.members.first();
     if (!m) return message.reply("Mention user");
     await m.kick();
@@ -76,23 +131,17 @@ client.on("messageCreate", async message => {
   }
 
   if (cmd === "warn") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
-      return message.reply("No permission");
     const m = message.mentions.members.first();
     if (!m) return message.reply("Mention user");
     message.reply(`${m.user.tag} warned`);
-  }
-
-  if (cmd === "clearwarns") {
-    message.reply("Warnings cleared (DB later)");
   }
 
   if (cmd === "timeout") {
     const m = message.mentions.members.first();
     const time = parseInt(args[1]);
     if (!m || !time) return message.reply("Mention user + minutes");
-    await m.timeout(time * 60 * 1000);
-    message.reply("User timed out");
+    await m.timeout(time * 60000);
+    message.reply("Timed out");
   }
 
   if (cmd === "untimeout") {
@@ -100,18 +149,6 @@ client.on("messageCreate", async message => {
     if (!m) return message.reply("Mention user");
     await m.timeout(null);
     message.reply("Timeout removed");
-  }
-
-  if (cmd === "slowmode") {
-    const time = parseInt(args[0]);
-    if (!time) return message.reply("Give seconds");
-    await message.channel.setRateLimitPerUser(time);
-    message.reply("Slowmode set");
-  }
-
-  if (cmd === "unslowmode") {
-    await message.channel.setRateLimitPerUser(0);
-    message.reply("Slowmode off");
   }
 
   if (cmd === "clear") {
@@ -140,8 +177,6 @@ client.on("messageCreate", async message => {
   /* ===== PHASE 2 ===== */
 
   if (cmd === "nick") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageNicknames))
-      return message.reply("No permission");
     const m = message.mentions.members.first();
     const nick = args.slice(1).join(" ");
     if (!m || !nick) return message.reply("Mention + nickname");
@@ -150,9 +185,6 @@ client.on("messageCreate", async message => {
   }
 
   if (cmd === "role") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
-      return message.reply("No permission");
-
     const action = args[0];
     const m = message.mentions.members.first();
     const role = message.mentions.roles.first();
@@ -162,25 +194,10 @@ client.on("messageCreate", async message => {
       await m.roles.add(role);
       message.reply("Role added");
     }
-
     if (action === "remove") {
       await m.roles.remove(role);
       message.reply("Role removed");
     }
-  }
-
-  if (cmd === "rolecreate") {
-    const name = args.join(" ");
-    if (!name) return message.reply("Give role name");
-    await message.guild.roles.create({ name });
-    message.reply("Role created");
-  }
-
-  if (cmd === "roledelete") {
-    const role = message.mentions.roles.first();
-    if (!role) return message.reply("Mention role");
-    await role.delete();
-    message.reply("Role deleted");
   }
 
   if (cmd === "hide") {
@@ -188,7 +205,7 @@ client.on("messageCreate", async message => {
       message.guild.roles.everyone,
       { ViewChannel: false }
     );
-    message.reply("Channel hidden");
+    message.reply("Hidden");
   }
 
   if (cmd === "unhide") {
@@ -196,7 +213,7 @@ client.on("messageCreate", async message => {
       message.guild.roles.everyone,
       { ViewChannel: true }
     );
-    message.reply("Channel unhidden");
+    message.reply("Unhidden");
   }
 
   if (cmd === "snipe") {
@@ -207,8 +224,6 @@ client.on("messageCreate", async message => {
   /* ===== PHASE 3 ===== */
 
   if (cmd === "nuke") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
-      return message.reply("No permission");
     const ch = message.channel;
     const newCh = await ch.clone();
     await ch.delete();
@@ -216,15 +231,11 @@ client.on("messageCreate", async message => {
   }
 
   if (cmd === "clone") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
-      return message.reply("No permission");
     await message.channel.clone();
     message.reply("Channel cloned");
   }
 
   if (cmd === "roleall") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
-      return message.reply("No permission");
     const role = message.mentions.roles.first();
     if (!role) return message.reply("Mention role");
     const members = await message.guild.members.fetch();
@@ -235,8 +246,6 @@ client.on("messageCreate", async message => {
   }
 
   if (cmd === "removeroleall") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
-      return message.reply("No permission");
     const role = message.mentions.roles.first();
     if (!role) return message.reply("Mention role");
     const members = await message.guild.members.fetch();
@@ -247,9 +256,6 @@ client.on("messageCreate", async message => {
   }
 
   if (cmd === "topcheck") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
-      return message.reply("No permission");
-
     if (args[0] === "enable") {
       topCheckEnabled = true;
       return message.reply("TopCheck enabled");
