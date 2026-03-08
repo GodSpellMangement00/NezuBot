@@ -1,1 +1,49 @@
 
+**Language:** python
+**Task:** Protofilo for me I'm DeadSlot I have a 1+ developing experience more things from ur side and add purple gradient theme in background
+
+```python
+```python
+import tkinter as tk
+from tkinter import ttk
+
+class Protofilo:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Protofilo")
+        self.root.geometry("800x600")
+        self.root.configure(bg="#6c5ce7")
+
+        self.gradient_frame = tk.Frame(self.root, bg="#6c5ce7")
+        self.gradient_frame.place(x=0, y=0, width=800, height=600)
+
+        self.name_label = tk.Label(self.root, text="Name: DeadSlot", bg="#6c5ce7", fg="white", font=("Arial", 20))
+        self.name_label.place(x=50, y=50)
+
+        self.experience_label = tk.Label(self.root, text="Experience: 1+ years", bg="#6c5ce7", fg="white", font=("Arial", 20))
+        self.experience_label.place(x=50, y=100)
+
+        self.skills_label = tk.Label(self.root, text="Skills:", bg="#6c5ce7", fg="white", font=("Arial", 20))
+        self.skills_label.place(x=50, y=150)
+
+        self.skills_listbox = tk.Listbox(self.root, bg="#c7b8ea", fg="black", font=("Arial", 15), width=30, height=10)
+        self.skills_listbox.insert(1, "Python")
+        self.skills_listbox.insert(2, "Java")
+        self.skills_listbox.insert(3, "C++")
+        self.skills_listbox.place(x=50, y=200)
+
+        self.projects_label = tk.Label(self.root, text="Projects:", bg="#6c5ce7", fg="white", font=("Arial", 20))
+        self.projects_label.place(x=400, y=50)
+
+        self.projects_listbox = tk.Listbox(self.root, bg="#c7b8ea", fg="black", font=("Arial", 15), width=30, height=10)
+        self.projects_listbox.insert(1, "Project 1")
+        self.projects_listbox.insert(2, "Project 2")
+        self.projects_listbox.insert(3, "Project 3")
+        self.projects_listbox.place(x=400, y=100)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = Protofilo(root)
+    root.mainloop()
+```
+```
